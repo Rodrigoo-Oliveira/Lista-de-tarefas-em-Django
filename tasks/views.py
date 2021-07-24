@@ -1,5 +1,3 @@
-from django.contrib.auth import load_backend
-from django.core import paginator
 from django.http.response import HttpResponse
 from django.shortcuts import redirect, render, get_object_or_404
 from django. contrib.auth.decorators import login_required
@@ -7,17 +5,27 @@ from django.core.paginator import Paginator
 from .forms import TaskForm
 from .models import Task
 from django.contrib import messages
+import datetime
 
 @login_required
 def taskList(request):
 
     search = request.GET.get('search')
+    filter = request.GET.get('filter')
+    tasksDoneRecently = Task.objects.filter(done='done', update=datetime.datetime.now()-datetime.timedelta(days=30), user=request.user).count()
+    tasksDone = Task.objects.filter(done='done', user=request.user).count()
+    tasksDoing = Task.objects.filter(done='doing', user=request.user).count()
+
 
     if search:
+
         tasks = Task.objects.filter(title__icontains=search, user=request.user)
 
+    elif filter:
+
+         tasks = Task.objects.filter(done=filter, user=request.user)
+
     else:
-        
         tasks_list = Task.objects.all().order_by('-create').filter(user=request.user)
         
         paginator = Paginator(tasks_list, 3)
@@ -26,7 +34,8 @@ def taskList(request):
 
         tasks = paginator.get_page(page)
 
-    return render(request, 'tasks/list.html', {'tasks': tasks})
+    return render(request, 'tasks/list.html', 
+        {'tasks': tasks, 'tasksrecently': tasksDoneRecently, 'tasksdone': tasksDone, 'tasksdoing': tasksDoing})
 
 
 @login_required
